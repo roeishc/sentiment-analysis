@@ -1,5 +1,6 @@
 package com.handson.sentiment_analysis.controller;
 
+import com.handson.sentiment_analysis.kafka.AppKafkaSender;
 import com.handson.sentiment_analysis.news.AppNewsStream;
 import com.handson.sentiment_analysis.nlp.SentimentAnalyzer;
 import org.reactivestreams.Publisher;
@@ -7,9 +8,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.kafka.receiver.KafkaReceiver;
 
 import java.time.Duration;
 import java.util.ArrayList;
+
+import static com.handson.sentiment_analysis.kafka.KafkaTopicConfig.APP_TOPIC;
 
 @RestController
 public class AppController {
@@ -20,6 +24,23 @@ public class AppController {
     @Autowired
     private AppNewsStream appNewsStream;
 
+    @Autowired
+    private AppKafkaSender kafkaSender;
+
+    @Autowired
+    private KafkaReceiver<String,String> kafkaReceiver;
+
+
+    @RequestMapping(path = "/sendKafka", method = RequestMethod.GET)
+    public  @ResponseBody Mono<String> sendText(String text)  {
+        kafkaSender.send(text, APP_TOPIC);
+        return Mono.just("OK");
+    }
+
+    @RequestMapping(path = "/getKafka", method = RequestMethod.GET)
+    public  @ResponseBody  Flux<String> getKafka()  {
+        return kafkaReceiver.receive().map(x -> x.value() + "<br>");
+    }
 
     @RequestMapping(path = "/startNewsStream", method = RequestMethod.GET)
     public @ResponseBody Flux<String> start(String text) throws Exception {
